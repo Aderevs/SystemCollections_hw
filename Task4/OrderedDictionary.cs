@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Dynamic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,55 +13,87 @@ namespace Task4
     {
         private DictionaryNode<T, U> root;
         private IComparer<T> _comparer;
-
-
+        private List<DictionaryNode<T, U>> elementsOrderedByAdding = new List<DictionaryNode<T, U>>();
+        public OrderedDictionary()
+        {
+            _comparer = Comparer<T>.Default;
+        }
         public OrderedDictionary(DictionaryNode<T, U> root)
         {
             this.root = root;
+            elementsOrderedByAdding.Add(root);
             _comparer = Comparer<T>.Default;
         }
-        public OrderedDictionary(T rootKay, U rootValue )
+        public OrderedDictionary(T rootKay, U rootValue) 
         {
-            DictionaryNode<T, U> root = new DictionaryNode<T, U>(rootKay, rootValue );
+            DictionaryNode<T, U> root = new DictionaryNode<T, U>(rootKay, rootValue);
             this.root = root;
+            elementsOrderedByAdding.Add(root);
             _comparer = Comparer<T>.Default;
         }
         public OrderedDictionary(DictionaryNode<T, U> root, IComparer<T> comparer)
         {
             this.root = root;
+            elementsOrderedByAdding.Add(root);
             _comparer = comparer;
         }
         public void Add(T key, U value)
         {
-            DictionaryNode<T, U> currentNode = root;
-            while (true)
+            if (root != null)
             {
-                if (_comparer.Compare(key, currentNode.Key) > 0)
+                DictionaryNode<T, U> currentNode = root;
+                while (true)
                 {
-                    if (currentNode.Right == null)
+                    if (_comparer.Compare(key, currentNode.Key) > 0)
                     {
-                        currentNode.Right = new DictionaryNode<T, U>(key, value);
-                        break;
+                        if (currentNode.Right == null)
+                        {
+                            currentNode.Right = new DictionaryNode<T, U>(key, value);
+                            elementsOrderedByAdding.Add(currentNode.Right);
+                            break;
+                        }
+                        currentNode = currentNode.Right;
                     }
-                    currentNode = currentNode.Right;
-                }
-                else if (_comparer.Compare(key, currentNode.Key) < 0)
-                {
-                    if (currentNode.Left == null)
+                    else if (_comparer.Compare(key, currentNode.Key) < 0)
                     {
-                        currentNode.Left = new DictionaryNode<T, U>(key, value);
-                        break;
+                        if (currentNode.Left == null)
+                        {
+                            currentNode.Left = new DictionaryNode<T, U>(key, value);
+                            elementsOrderedByAdding.Add(currentNode.Left);
+                            break;
+                        }
+                        currentNode = currentNode.Left;
                     }
-                    currentNode = currentNode.Left;
-                }
-                else
-                {
-                    throw new ArgumentException("Element with such key already exist");
+                    else
+                    {
+                        throw new ArgumentException("Element with such key already exist");
+                    }
                 }
             }
+            else
+            {
+                root = new DictionaryNode<T, U>(key, value);
+                elementsOrderedByAdding.Add(root);
+            }
         }
-
         public void Add(KeyValuePair<T, U> item) => Add(item.Key, item.Value);
+
+        public void RemoveWithKey(T key)
+        {
+            OrderedDictionary<T, U> newDictionary = new OrderedDictionary<T, U>();
+            foreach (DictionaryNode<T, U> item in elementsOrderedByAdding)
+            {
+                if (!item.Key.Equals(key))
+                {
+                    newDictionary.Add(item.Key, item.Value);
+                }
+            }
+            root = null;
+            foreach (KeyValuePair<T, U> item in newDictionary.elementsOrderedByAdding)
+            {
+                Add(item.Key, item.Value);
+            }
+        }
 
         #region elments for IEnumerable
 
@@ -87,7 +120,6 @@ namespace Task4
             if (!nodesToMoveStack.Any() && current == null)
             {
                 current = root;
-                branchings.Push(current);
                 nodesToMoveStack.Push(current);
                 while (current.Left != null)
                 {
@@ -99,7 +131,7 @@ namespace Task4
                     nodesToMoveStack.Push(current);
                 }
             }
-            if (current == branchings.Peek())
+            if (branchings.Any() && current == branchings.Peek())
             {
                 current = current.Right;
                 branchings.Pop();
@@ -159,6 +191,10 @@ namespace Task4
             public override string ToString()
             {
                 return $"{Key.ToString()}: {Value.ToString()}";
+            }
+            public static implicit operator KeyValuePair<T, U>(DictionaryNode<T, U> node)
+            {
+                return new KeyValuePair<T, U> (node.Key, node.Value);
             }
         }
 
